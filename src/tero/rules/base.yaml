@@ -1,0 +1,82 @@
+# Reglas base para Tero. Cada regla produce un hallazgo cuando TODOS sus
+# criterios devuelven evidencia. La severidad usa la escala info/baja/media/alta.
+
+- id: TERO-IMP-NET-001
+  titulo: "Usa sockets de Windows (ws2_32)"
+  severidad: media
+  criterios:
+    imports:
+      incluye: ["ws2_32.dll::WSAStartup", "ws2_32.dll::socket"]
+      modo: cualquiera
+
+- id: TERO-IMP-NET-002
+  titulo: "Usa WinHTTP o WinINet para HTTP"
+  severidad: media
+  criterios:
+    imports:
+      incluye:
+        - "winhttp.dll::WinHttpOpen"
+        - "winhttp.dll::WinHttpConnect"
+        - "wininet.dll::InternetOpenA"
+        - "wininet.dll::InternetOpenW"
+      modo: cualquiera
+
+- id: TERO-IMP-REG-001
+  titulo: "Escribe en el registro de Windows"
+  severidad: media
+  criterios:
+    imports:
+      incluye:
+        - "advapi32.dll::RegSetValueExA"
+        - "advapi32.dll::RegSetValueExW"
+        - "advapi32.dll::RegCreateKeyExA"
+        - "advapi32.dll::RegCreateKeyExW"
+      modo: cualquiera
+
+- id: TERO-IMP-CRYPTO-001
+  titulo: "Usa CryptoAPI (bcrypt o CryptoAPI legacy)"
+  severidad: baja
+  criterios:
+    imports:
+      incluye:
+        - "bcrypt.dll::BCryptEncrypt"
+        - "bcrypt.dll::BCryptDecrypt"
+        - "advapi32.dll::CryptEncrypt"
+        - "advapi32.dll::CryptDecrypt"
+      modo: cualquiera
+
+- id: TERO-IMP-ANTIDBG-001
+  titulo: "Chequea presencia de debugger"
+  severidad: alta
+  criterios:
+    imports:
+      incluye:
+        - "kernel32.dll::IsDebuggerPresent"
+        - "kernel32.dll::CheckRemoteDebuggerPresent"
+      modo: cualquiera
+
+- id: TERO-IMP-DYN-001
+  titulo: "Resolución dinámica de APIs con GetProcAddress"
+  severidad: media
+  criterios:
+    imports:
+      incluye: ["kernel32.dll::GetProcAddress", "kernel32.dll::LoadLibraryA"]
+      modo: todos
+
+- id: TERO-STR-URL-001
+  titulo: "Posibles URLs embebidas"
+  severidad: media
+  criterios:
+    strings_regex: '^(https?|ftp)://'
+
+- id: TERO-STR-REG-001
+  titulo: "Posibles rutas de registro embebidas"
+  severidad: media
+  criterios:
+    strings_regex: '^(SOFTWARE|HKLM|HKCU)\\\\'
+
+- id: TERO-FUN-LICENCIA-001
+  titulo: "Función comparadora de strings tipo validador de licencia"
+  severidad: info
+  criterios:
+    funcion_llama: ["strcmp", "strncmp", "memcmp"]

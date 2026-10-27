@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Salida de corridas
+reportes/
+muestras/bin/
+
+# Proyectos de Ghidra (quedan en reportes/ pero por si acaso)
+*.gpr
+*.rep/
+*.gpr.lock*
