@@ -9,17 +9,18 @@ jobs:
   tests:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python 3.13
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
-      - name: Setup MinGW-w64 (gcc)
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
+      # windows-latest ya trae MinGW-w64 (gcc + mingw32-make) en el PATH
+      - name: Check MinGW-w64
+        run: |
+          gcc --version
+          mingw32-make --version
 
       - name: Install Tero
         run: |
