@@ -17,13 +17,11 @@ from __future__ import annotations
 import argparse
 import importlib.resources as resources
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-from . import ghidra, reglas, informe
-
+from . import ghidra, informe, reglas
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = RAIZ_REPO / "ghidra_scripts"
@@ -69,6 +67,7 @@ def cmd_analyze(args) -> int:
         instalacion=inst,
         timeout_s=args.timeout,
         verbose=args.verbose,
+        max_funciones=args.max_funciones,
     )
     datos = ghidra.leer_informe(informe_json)
     rs = _reglas_default()
@@ -125,6 +124,7 @@ def cmd_demo(args) -> int:
             ghidra=args.ghidra,
             timeout=args.timeout,
             verbose=args.verbose,
+            max_funciones=args.max_funciones,
         )
         rc |= cmd_analyze(a)
     return rc
@@ -140,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--out", default="out/")
     a.add_argument("--timeout", type=int, default=300)
     a.add_argument("--verbose", action="store_true")
+    a.add_argument("--max-funciones", type=int, default=ghidra.MAX_FUNCIONES,
+                   help="funciones propias a decompilar (default: %(default)s)")
     a.set_defaults(func=cmd_analyze)
 
     r = sub.add_parser("reglas", help="re-evalua reglas sobre un informe JSON")
@@ -149,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("demo", help="analiza los crackmes del repo")
     d.add_argument("--timeout", type=int, default=300)
     d.add_argument("--verbose", action="store_true")
+    d.add_argument("--max-funciones", type=int, default=ghidra.MAX_FUNCIONES,
+                   help="funciones propias a decompilar (default: %(default)s)")
     d.set_defaults(func=cmd_demo)
 
     args = p.parse_args(argv)

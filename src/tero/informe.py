@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .reglas import Hallazgo
@@ -9,14 +10,22 @@ from .reglas import Hallazgo
 SEV_LABEL = {"alta": "🟥 alta", "media": "🟧 media", "baja": "🟨 baja", "info": "⬜ info"}
 
 
+def _code(texto) -> str:
+    """Span de código inline a prueba de backticks: los strings del binario los escribe su autor."""
+    texto = " ".join(str(texto).split()) or " "
+    fence = "`" * (max((len(r) for r in re.findall(r"`+", texto)), default=0) + 1)
+    pad = " " if texto.startswith("`") or texto.endswith("`") else ""
+    return f"{fence}{pad}{texto}{pad}{fence}"
+
+
 def to_markdown(programa: dict, hallazgos: list[Hallazgo], resumen: dict) -> str:
-    out = [f"# Tero — informe de {programa['nombre']}", ""]
+    out = [f"# Tero — informe de {_code(programa['nombre'])}", ""]
     out.append("## Datos del binario")
     out.append("")
     out.append("| Campo | Valor |")
     out.append("|---|---|")
     for k in ("nombre", "arquitectura", "compilador", "image_base", "md5", "sha256"):
-        out.append(f"| {k} | `{programa.get(k)}` |")
+        out.append(f"| {k} | {_code(programa.get(k)).replace('|', chr(92) + '|')} |")
     out.append("")
     out.append("## Resumen")
     out.append("")
@@ -40,7 +49,7 @@ def to_markdown(programa: dict, hallazgos: list[Hallazgo], resumen: dict) -> str
             out.append(f"### {h.regla_id} — {h.titulo}  ·  {SEV_LABEL[h.severidad]}")
             out.append("")
             for e in h.evidencia:
-                out.append(f"- `{e}`")
+                out.append(f"- {_code(e)}")
             out.append("")
     return "\n".join(out) + "\n"
 

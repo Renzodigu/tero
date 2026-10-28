@@ -4,6 +4,7 @@ Cubren:
 - un informe mínimo que dispara reglas de imports, strings y funcion_llama;
 - la ordenación por severidad;
 - el modo "todos" vs. "cualquiera";
+- que una regla con varios criterios exija que todos aporten evidencia;
 - errores de severidad y criterio desconocido.
 """
 
@@ -12,7 +13,6 @@ from __future__ import annotations
 import pytest
 
 from tero import reglas
-
 
 INFORME = {
     "programa": {"nombre": "x.exe"},
@@ -88,6 +88,29 @@ def test_modo_todos_exige_todos_los_imports():
     assert reglas.evaluar(INFORME, r) == []
 
 
+def test_criterios_combinados_exigen_todos():
+    def regla(patron):
+        return [
+            {
+                "id": "Y",
+                "titulo": "red con URL",
+                "severidad": "alta",
+                "criterios": {
+                    "imports": {"incluye": ["ws2_32.dll::socket"]},
+                    "strings_regex": patron,
+                },
+            }
+        ]
+
+    # imports aporta pero strings_regex no: no dispara
+    assert reglas.evaluar(INFORME, regla("^ftp://")) == []
+    # los dos aportan: dispara con la evidencia de ambos
+    out = reglas.evaluar(INFORME, regla("^https?://"))
+    assert len(out) == 1
+    assert "ws2_32.dll::socket" in out[0].evidencia
+    assert any("ejemplo.invalid" in e for e in out[0].evidencia)
+
+
 def test_strings_regex_lista_evidencia():
     r = [
         {
@@ -121,3 +144,16 @@ def test_reglas_default_cargan():
     rs = reglas.cargar_reglas(Path("src/tero/rules/base.yaml"))
     assert isinstance(rs, list) and rs
     assert all({"id", "titulo", "severidad", "criterios"} <= set(r) for r in rs)
+
+
+def test_informe_markdown_no_deja_escapar_strings_del_binario():
+    from tero import informe
+
+    malicioso = "0x9: ``` </details> ![x](http://evil.invalid/p.png)\n# Titulo falso"
+    h = reglas.Hallazgo("S", "url", "media", (malicioso,))
+    md = informe.to_markdown({"nombre": "a`b.exe"}, [h], {
+        "funciones": 0, "strings": 1, "imports": 0, "hallazgos": 1, "por_severidad": {"media": 1}})
+    linea = next(x for x in md.splitlines() if "evil.invalid" in x)
+    assert linea.startswith("- ````")  # el span es más largo que cualquier racha de backticks
+    assert "\n# Titulo falso" not in md
+    assert md.startswith("# Tero — informe de ``a`b.exe``")

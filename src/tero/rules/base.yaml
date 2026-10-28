@@ -1,5 +1,7 @@
 # Reglas base para Tero. Cada regla produce un hallazgo cuando TODOS sus
-# criterios devuelven evidencia. La severidad usa la escala info/baja/media/alta.
+# criterios devuelven evidencia (AND entre criterios; dentro de `imports`,
+# `modo` elige entre cualquiera y todos). La severidad usa la escala
+# info/baja/media/alta.
 
 - id: TERO-IMP-NET-001
   titulo: "Usa sockets de Windows (ws2_32)"

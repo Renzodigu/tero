@@ -16,6 +16,8 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+MAX_FUNCIONES = 60
+
 
 class GhidraNoEncontrado(RuntimeError):
     pass
@@ -51,7 +53,7 @@ def localizar(ghidra_dir: str | os.PathLike | None = None) -> Instalacion:
 
 
 def _addr_hex(addr) -> str:
-    return "0x%x" % addr.getOffset()
+    return f"0x{addr.getOffset():x}"
 
 
 def _program_meta(p) -> dict:
@@ -107,8 +109,9 @@ def _listar_strings(p, minimo: int = 4) -> list[dict]:
     return out
 
 
-def _funciones(p, limite: int = 60) -> list[dict]:
-    from ghidra.app.decompiler import DecompInterface, DecompileOptions
+def _funciones(p, limite: int = MAX_FUNCIONES) -> list[dict]:
+    """Decompila hasta ``limite`` funciones propias (sin contar externas ni thunks)."""
+    from ghidra.app.decompiler import DecompileOptions, DecompInterface
     from ghidra.util.task import ConsoleTaskMonitor
 
     monitor = ConsoleTaskMonitor()
@@ -116,11 +119,11 @@ def _funciones(p, limite: int = 60) -> list[dict]:
     ifc.setOptions(DecompileOptions())
     ifc.openProgram(p)
     out = []
-    for i, f in enumerate(p.getFunctionManager().getFunctions(True)):
-        if i >= limite:
-            break
+    for f in p.getFunctionManager().getFunctions(True):
         if f.isExternal() or f.isThunk():
             continue
+        if len(out) >= limite:
+            break
         llamadas = sorted({c.getName() for c in f.getCalledFunctions(monitor)})
         res = ifc.decompileFunction(f, 30, monitor)
         decomp = res.getDecompiledFunction()
@@ -144,6 +147,7 @@ def analizar(
     instalacion: Instalacion | None = None,
     timeout_s: int = 300,
     verbose: bool = False,
+    max_funciones: int = MAX_FUNCIONES,
 ) -> Path:
     """Analiza ``binario`` con pyghidra y escribe el informe en ``salida_json``."""
     import pyghidra
@@ -165,7 +169,7 @@ def analizar(
             "imports": _listar_imports(p),
             "exports": _listar_exports(p),
             "strings": _listar_strings(p),
-            "funciones": _funciones(p),
+            "funciones": _funciones(p, max_funciones),
         }
     salida_json.write_text(json.dumps(informe, indent=2, sort_keys=True), encoding="utf-8")
     return salida_json

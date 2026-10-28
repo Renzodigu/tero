@@ -21,9 +21,10 @@ Las severidades posibles son: info, baja, media, alta.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
@@ -86,7 +87,10 @@ def _criterio_funcion_llama(c: Iterable[str], informe: dict) -> list[str]:
 
 
 def evaluar(informe: dict, reglas: list[dict]) -> list[Hallazgo]:
-    """Aplica cada regla y devuelve los hallazgos ordenados por severidad y id."""
+    """Aplica cada regla y devuelve los hallazgos ordenados por severidad y id.
+
+    Una regla dispara solo si *todos* sus criterios aportan evidencia (AND).
+    """
     hallazgos: list[Hallazgo] = []
     for r in reglas:
         rid = r["id"]
@@ -95,17 +99,22 @@ def evaluar(informe: dict, reglas: list[dict]) -> list[Hallazgo]:
         if sev not in SEVERIDADES:
             raise ValueError(f"severidad invalida en {rid}: {sev}")
         criterios: dict[str, Any] = r.get("criterios", {})
+        if not criterios:
+            continue
         evidencia: list[str] = []
+        cumple = True
         for clave, valor in criterios.items():
             if clave == "imports":
-                evidencia += _criterio_imports(valor, informe)
+                aporte = _criterio_imports(valor, informe)
             elif clave == "strings_regex":
-                evidencia += _criterio_strings_regex(valor, informe)
+                aporte = _criterio_strings_regex(valor, informe)
             elif clave == "funcion_llama":
-                evidencia += _criterio_funcion_llama(valor, informe)
+                aporte = _criterio_funcion_llama(valor, informe)
             else:
                 raise ValueError(f"criterio desconocido en {rid}: {clave}")
-        if evidencia:
+            cumple = cumple and bool(aporte)
+            evidencia += aporte
+        if cumple:
             hallazgos.append(
                 Hallazgo(rid, titulo, sev, tuple(sorted(set(evidencia))))
             )
